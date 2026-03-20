@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DAG Visualization</title>
+    <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({ startOnLoad: true });
+    </script>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .mermaid {
+            display: flex;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="mermaid">
+graph LR
+  ods.ods_plr_dim_qcy_product_saleinfo_snapshot_ma --> dim.dim_product_saleinfo
+  ods.ods_plr_dim_xy_product_assetinfo_snapshot_ma --> dim.dim_product_assetinfo
+  ods.ods_plr_dwm_hr_qcy_performance_all --> dws.dws_qcy_sell_prfmt
+  ods.ods_plr_dim_qcy_performance_plan --> dws.dws_qcy_prfmt_tgt
+  ods.ods_plr_dwm_hr_qcy_p7 --> dws.dws_qcy_consume_prfmt
+  ods.ods_plr_dwm_hr_xy_p7_all --> dws.dws_xy_resv_extr_analy
+  ods_hive.ods_chunyu_xiuyu_cus_residual_assets_report --> dws.dws_cy_new_cust_prfmt_ctbt
+  dws_hive.dws_shop_channel_reservation --> dws.dws_xy_shop_new_cust_can_resv_situ
+  ods.ods_plr_dim_qcy_product_assetinfo_snapshot_ma --> dim.dim_product_assetinfo
+  ods_hive.ods_oc_sale_order_batch --> dws.dws_prm_acty_prd_sale_sub
+  ods.ods_plr_dim_cy_cus_attribute_00_di --> dws.dws_cy_cust_ltst_active_rec
+  ods.ods_plr_dwm_hr_cy_performance_all --> dws.dws_cy_sell_prfmt
+  ods_hive.ods_ec_staff --> dim.dim_shopinfo
+  ods.ods_plr_dim_cy_performance_plan --> dws.dws_cy_prfmt_tgt
+  ods_hive.ods_oc_activity_product_relation --> dws.dws_prm_acty_prd_sale_sub
+  ods.ods_plr_dwm_hr_xy_shop_performance_all --> dws.dws_xy_shop_sell_prfmt_plus_tenth_and_dedtn
+  dwd_hive.dwd_op_take_new_cost --> dws.dws_xy_shop_sell_prfmt_plus_tenth_and_dedtn
+  ods.ods_plr_dwm_hr_xy_shop_performance_all --> dws.dws_cy_new_cust_prfmt_ctbt
+  ods_hive.ods_erp2_staff_shift --> dws.dws_xy_health_consultant_attendance_analysis
+  ods_hive.ods_erp2_staff_punch_card --> dws.dws_xy_health_consultant_attendance_analysis
+  ods.ods_plr_dim_xy_shop_info --> dim.dim_shopinfo
+  dim.dim_shopinfo --> dws.dws_qcy_consume_prfmt
+  dim.dim_customer --> dws.dws_cy_cust_ltst_active_rec
+  ods.ods_plr_dwm_hr_xy_p7_all --> dws.dws_xy_appt_no_show_analysis
+  ods_hive.ods_smc_member_marketing_connet --> dws.dws_coupon_usage_analysis
+  ods_hive.ods_erp1_store_closure_cost_deduction --> dws.dws_xy_shop_sell_prfmt_plus_tenth_and_dedtn
+  ods.ods_plr_dim_cy_product_saleinfo_snapshot_ma --> dim.dim_product_saleinfo
+  dwd_hive.dwd_op_travel_cost --> dws.dws_xy_shop_sell_prfmt_plus_tenth_and_dedtn
+  dws_hive.dws_shop_channel_reservation_continuous --> dws.dws_xy_shop_new_cust_can_resv_situ
+  ods.ods_plr_dwd_customer --> dim.dim_customer
+  ods.ods_plr_dim_xy_shop_sale_target_plan --> dws.dws_xy_prfmt_tgt
+  ods.ods_plr_dwm_hr_xy_shop_performance_all --> dws.dws_xy_sell_prfmt
+  ods.ods_plr_dwm_hr_cy_p7 --> dws.dws_cy_cust_ltst_active_rec
+  ods.ods_plr_dim_cy_product_assetinfo_snapshot_ma --> dim.dim_product_assetinfo
+  ods_hive.ods_ec_job_responsibility --> dws.dws_xy_health_consultant_attendance_analysis
+  ods_hive.ods_oc_project_extract_record --> dws.dws_xy_resv_extr_analy
+  ods_hive.ods_spc_product_sku --> dws.dws_prm_acty_prd_sale_sub
+  dwd_hive.dwd_op_shop_info_detail --> dws.dws_xy_shop_sell_prfmt_plus_tenth_and_dedtn
+  dim.dim_shopinfo --> dws.dws_xy_shop_new_cust_can_resv_situ
+  ods.ods_plr_dwm_hr_cy_performance_all --> dws.dws_cy_cust_ltst_active_rec
+  ods.ods_plr_dwm_hr_cy_p7 --> dws.dws_cy_consume_prfmt
+  dim.dim_shopinfo --> dws.dws_xy_sell_prfmt
+  ods.ods_plr_dwm_hr_xy_shop_performance_all --> dws.dws_prm_acty_prd_sale_sub
+  ods_hive.ods_ec_job_responsibility --> dim.dim_shopinfo
+  ods.ods_plr_dwm_hr_xy_p7_all --> dws.dws_xy_consume_prfmt
+  ods.ods_plr_dim_cy_cus_attribute_00_di --> dws.dws_cy_new_cust_prfmt_ctbt
+  ods_hive.ods_chunyu_xiuyu_cus_residual_assets_report --> dws.dws_cy_cust_ltst_active_rec
+  ods.ods_plr_dwm_hr_xy_shop_performance_all --> dws.dws_coupon_usage_analysis
+  ods_hive.ods_reservation --> dws.dws_xy_resv_extr_analy
+  ods_hive.ods_oc_project_extract_record --> dws.dws_xy_appt_no_show_analysis
+  ods.ods_plr_dim_xy_shop_qcy_manager --> dim.dim_shopinfo
+  ods.ods_plr_dim_xy_shop_cy_manager --> dim.dim_shopinfo
+  ods_hive.ods_sr_staff_manual_detail --> dws.dws_xy_health_consultant_attendance_analysis
+  dws.dws_xy_prfmt_tgt --> dws.dws_xy_shop_sell_prfmt_plus_tenth_and_dedtn
+  dim.dim_customer --> dws.dws_cy_new_cust_prfmt_ctbt
+  ods.ods_plr_dim_xy_product_saleinfo_snapshot_ma --> dim.dim_product_saleinfo
+  ods.ods_plr_dim_qcy_shop_info --> dim.dim_shopinfo
+  ods_hive.ods_reservation --> dws.dws_xy_appt_no_show_analysis
+  dws_hive.dws_task_circle_guest_task_followup_staff_statistics --> dws.dws_xy_promo_task_follow_analysis
+  dwd_hive.dwd_op_jm_cost --> dws.dws_xy_shop_sell_prfmt_plus_tenth_and_dedtn
+  ods.ods_plr_dwm_hr_cy_p7 --> dws.dws_cy_new_cust_prfmt_ctbt
+  dim.dim_shopinfo --> dws.dws_xy_consume_prfmt
+  dwd_hive.dwd_shop_info_detail_all --> dim.dim_shopinfo
+  dim.dim_product_assetinfo --> dws.dws_xy_consume_prfmt
+  dim.dim_shopinfo --> dws.dws_cy_consume_prfmt
+  ods.ods_plr_dim_cy_shop_info --> dim.dim_shopinfo
+  ods.ods_plr_dwm_hr_cy_performance_all --> dws.dws_cy_new_cust_prfmt_ctbt
+    </div>
+</body>
+</html>
