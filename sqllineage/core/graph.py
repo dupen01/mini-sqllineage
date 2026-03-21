@@ -17,7 +17,6 @@ Example:
     dg.print_all_edges_to_mermaid()
 """
 
-import json
 from pathlib import Path
 from string import Template
 
@@ -312,10 +311,13 @@ class DagGraph:
         Returns:
             Mermaid格式的图描述字符串
         """
-        mermaid_str = f"graph {direction}"
-        for _from, _to in self.__edges:
-            mermaid_str += f"\n  {_from} --> {_to}"
-        return mermaid_str
+        if not self.__nodes:
+            return ""
+        else:
+            mermaid_str = f"graph {direction}"
+            for _from, _to in self.__edges:
+                mermaid_str += f"\n  {_from} --> {_to}"
+            return mermaid_str
 
     def to_dict(self) -> dict:
         """
@@ -326,10 +328,10 @@ class DagGraph:
         """
         nodes = [{"id": node, "label": node.split(".")[:-1]} for node in self.__nodes]
         edges = [{"source": _from, "target": _to} for _from, _to in self.__edges]
-        return {"nodes": nodes, "edges": edges}
+        return {"nodes": nodes, "edges": edges, "node_count": len(nodes)}
 
-    def to_json(self) -> str:
-        return json.dumps(self.to_dict())
+    # def to_json(self) -> str:
+    #     return json.dumps(self.to_dict())
 
     def to_html(self) -> str:
         """

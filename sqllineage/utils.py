@@ -19,6 +19,7 @@ Example:
     __visualize_dag(sql, "output.html", "My DAG")
 """
 
+import json
 import os
 import re
 from pathlib import Path
@@ -40,6 +41,8 @@ def read_sql_from_directory(path: str | Path) -> str:
     """
     path = Path(path)
 
+    helper = SqlHelper()
+
     # 如果是单个SQL文件，直接读取
     if path.is_file():
         sql_str = path.read_text(encoding="utf-8")
@@ -48,16 +51,34 @@ def read_sql_from_directory(path: str | Path) -> str:
     # 如果是目录，递归查找所有SQL文件
     sql_files = list(path.rglob("*.sql"))
 
+    # 方式1: 使用字符串拼接
     sql_stmt_str = ""
     for sql_file in sql_files:
+        print(f"reading {sql_file.name}")
         sql_str = sql_file.read_text(encoding="utf-8")
+        # 去除注释
+        sql_str = helper.trim_comment(sql_str)
         if not sql_str.strip().endswith(";"):
             sql_str += ";\n"
         sql_stmt_str += sql_str
+
+    # 方式2: 使用 StringIO (代码已注释,保留作为参考, 无明显性能提升)
+    # import io
+    # buf = io.StringIO()
+    # for sql_file in sql_files:
+    #     sql_str = sql_file.read_text(encoding="utf-8")
+    #      # 去除注释
+    #     sql_str = helper.trim_comment(sql_str)
+    #     if not sql_str.strip().endswith(";"):
+    #         sql_str += ";\n"
+    #     buf.write(sql_str)
+    # sql_stmt_str = buf.getvalue()
+    # buf.close()
+
     return sql_stmt_str
 
 
-def __build_tables_and_graph(sql_stmt_str: str) -> Tuple[set, set, DagGraph]:
+def __build_tables_and_graph(sql_stmt_str: str) -> Tuple[list, list, DagGraph]:
     """
     一次性构建源表、目标表和DAG图，避免重复遍历
 
@@ -84,7 +105,7 @@ def __build_tables_and_graph(sql_stmt_str: str) -> Tuple[set, set, DagGraph]:
                 for tgt in targets:
                     dg.add_edge(src, tgt)
 
-    return source_tables, target_tables, dg
+    return list(source_tables), list(target_tables), dg
 
 
 def get_all_tables(sql_stmt_str: str) -> List[str]:
@@ -98,7 +119,8 @@ def get_all_tables(sql_stmt_str: str) -> List[str]:
         所有表名列表
     """
     source_tables, target_tables, _ = __build_tables_and_graph(sql_stmt_str)
-    return sorted(list(source_tables.union(target_tables)))
+    # return sorted(list(source_tables.union(target_tables)))
+    return sorted(list(set(source_tables + target_tables)))
 
 
 def get_all_root_tables(sql_stmt_str: str) -> List[str]:
@@ -112,7 +134,21 @@ def get_all_root_tables(sql_stmt_str: str) -> List[str]:
         根表列表
     """
     source_tables, target_tables, _ = __build_tables_and_graph(sql_stmt_str)
-    return sorted(list(source_tables - target_tables))
+    return sorted(list(set(source_tables) - set(target_tables)))
+
+
+def get_all_leaf_tables(sql_stmt_str: str) -> List[str]:
+    """
+    获取没有下游任务的目标表，比如ads表，最下游的表
+
+    Args:
+        sql_stmt_str: SQL语句字符串
+
+    Returns:
+        叶子表列表
+    """
+    source_tables, target_tables, _ = __build_tables_and_graph(sql_stmt_str)
+    return sorted(list(set(target_tables) - set(source_tables)))
 
 
 def search_related_root_tables(sql_stmt_str: str, target_table: str) -> List[str] | None:
@@ -173,20 +209,6 @@ def search_related_tables(sql_stmt_str: str, target_table: str) -> List[str] | N
     return sorted(list(related_tables))
 
 
-def get_all_leaf_tables(sql_stmt_str: str) -> List[str]:
-    """
-    获取没有下游任务的目标表，比如ads表，最下游的表
-
-    Args:
-        sql_stmt_str: SQL语句字符串
-
-    Returns:
-        叶子表列表
-    """
-    source_tables, target_tables, _ = __build_tables_and_graph(sql_stmt_str)
-    return sorted(list(target_tables - source_tables))
-
-
 def __visualize_dag(dag_graph: DagGraph, filename: str = "dag_mermaid.html") -> None:
     """
     可视化DAG图
@@ -203,4 +225,27 @@ def __visualize_dag(dag_graph: DagGraph, filename: str = "dag_mermaid.html") -> 
 
     abs_path = os.path.abspath(filename)
     webbrowser.open(f"file://{abs_path}")
-    print(f"Mermaid.js HTML文件已生成并打开: {abs_path}")
+    print(f"HTML文件已生成并打开: {abs_path}")
+
+
+def list_command_json(tables: list[str]) -> str:
+    result = {"status": "ok", "command": "list-tables", "tables": tables, "meta": {"table_count": len(tables)}}
+
+    return json.dumps(result)
+
+
+def list_command_text(tables: list[str]) -> str:
+    result = "- " + "\n- ".join(sorted(tables))
+    return result
+
+
+def search_command_json(dag_graph: DagGraph) -> str:
+    dag_dict = dag_graph.to_dict()
+    result = {
+        "status": "ok",
+        "command": "search-table",
+        "data": {"nodes": dag_dict.get("nodes"), "edges": dag_dict.get("edges")},
+        "mermaid": dag_graph.to_mermaid(),
+        "meta": {"node_count": dag_dict.get("node_count")},
+    }
+    return json.dumps(result)
