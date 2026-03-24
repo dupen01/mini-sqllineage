@@ -1,6 +1,6 @@
 {
     "python.testing.pytestArgs": [
-        "sqllineage",
+        "sqlh",
         "-s"
     ],
     "python.testing.unittestEnabled": false,

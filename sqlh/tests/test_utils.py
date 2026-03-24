@@ -1,6 +1,6 @@
 from typing import Tuple
 
-from sqllineage import utils
+from sqlh import utils
 
 # 读取目录或文件 showyu_fastdata_backup_20251202  showyu_llm_backup_20260319
 sql_path = "/Users/dunett/codes/duperl/daas-migration/showyu_llm_backup_20260319"

@@ -1,7 +1,7 @@
 import argparse
 from pathlib import Path
 
-from sqllineage import __version__
+from sqlh import __version__
 
 from .utils import (
     get_all_dag,

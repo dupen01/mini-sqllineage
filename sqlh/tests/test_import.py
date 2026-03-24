@@ -1,6 +1,4 @@
-from sqllineage import DagGraph
-from sqllineage import get_all_tables
-from sqllineage import split_sql
+from sqlh import DagGraph, get_all_tables, split_sql
 
 
 def test_daggraph():
@@ -11,6 +9,7 @@ def test_daggraph():
 def test_get_all_tables():
     sql_stmt_str = "select * from dim.dim_shopinfo"
     print(get_all_tables(sql_stmt_str))
+
 
 def test_split_sql():
     sql_stmt_str = "select * from dim.dim_shopinfo; select 123"

@@ -1,4 +1,4 @@
-from sqllineage.core.helper import get_source_target_tables, split_sql, trim_comment
+from sqlh.core.helper import get_source_target_tables, split_sql, trim_comment
 
 
 def test_split():

@@ -1,4 +1,4 @@
-from sqllineage import DagGraph, utils
+from sqlh import DagGraph, utils
 
 sql_stmt_str2 = """
 -- DWD layer
