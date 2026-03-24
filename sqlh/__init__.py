@@ -13,7 +13,7 @@ from .utils import (
     visualize_dag,
 )
 
-__version__ = "0.2.3"
+__version__ = "0.2.6"
 
 __all__ = [
     "split_sql",

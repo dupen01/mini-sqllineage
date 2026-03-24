@@ -20,7 +20,7 @@ A lightweight Python library for analyzing SQL lineage and tracking table depend
 ## Installation
 
 ```bash
-pip install mini-sqllineage
+pip install sqlh
 ```
 
 ## Quick Start
@@ -28,7 +28,7 @@ pip install mini-sqllineage
 ### Python API
 
 ```python
-from sqllineage import (
+from sqlh import (
     get_all_tables,
     get_all_root_tables,
     search_related_upstream_tables,
@@ -85,7 +85,7 @@ sqlh web -p /path/to/sql/files
 ### DagGraph Class
 
 ```python
-from sqllineage import DagGraph
+from sqlh import DagGraph
 
 dag = DagGraph()
 dag.add_edge("table_a", "table_b")
@@ -192,7 +192,7 @@ graph LR
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/mini-sqllineage.git
+git clone https://github.com/dupen01/mini-sqllineage.git
 cd mini-sqllineage
 
 # Install in development mode
@@ -203,16 +203,13 @@ pytest
 
 # Run linting
 ruff check .
-
-# Run type checking
-mypy sqllineage
 ```
 
 ### Project Structure
 
 ```
 mini-sqllineage/
-├── sqllineage/
+├── sqlh/
 │   ├── __init__.py
 │   ├── cli.py              # Command-line interface
 │   ├── utils.py            # Utility functions
@@ -232,10 +229,6 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Changelog
-
-See [CHANGELOG.md](CHANGELOG.md) for a list of changes.
 
 ## TODO
 
