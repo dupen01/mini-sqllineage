@@ -2,8 +2,8 @@ from typing import Tuple
 
 from sqlh import utils
 
-# 读取目录或文件 showyu_fastdata_backup_20251202  showyu_llm_backup_20260319
-sql_path = "/Users/dunett/codes/duperl/daas-migration/showyu_llm_backup_20260319"
+# 读取目录或文件
+sql_path = ""
 sql_stmt_str = utils.read_sql_from_directory(sql_path)
 
 

@@ -1,4 +1,5 @@
 import argparse
+import sys
 from pathlib import Path
 
 from sqlh import __version__
@@ -99,7 +100,11 @@ def main():
     if args.sql:
         sql_stmt_str = args.sql
     else:
-        sql_stmt_str = read_sql_from_directory(args.path)
+        try:
+            sql_stmt_str = read_sql_from_directory(args.path)
+        except FileNotFoundError:
+            print(f"Error: File not found: {args.path}")
+            sys.exit(1)
 
     if args.command == "list":
         if args.all:

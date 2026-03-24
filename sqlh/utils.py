@@ -41,6 +41,9 @@ def read_sql_from_directory(path: str | Path) -> str:
         合并后的SQL字符串
     """
     path = Path(path)
+    # 判断文件目录是否存在
+    if not path.exists():
+        raise FileNotFoundError(f"File or directory not found: {path}")
 
     # 如果是单个SQL文件，直接读取
     if path.is_file():
