@@ -300,7 +300,7 @@ def search_related_tables(sql_stmt_str: str, target_table: str) -> SearchResult:
 
 
 def visualize_dag(
-    dag_graph: DagGraph, filename: str | Path = "lineage_viewer.html", template_type: Literal["mermaid", "dagre"] = "mermaid"
+    dag_graph: DagGraph, filename: str | Path = "lineage_mermaid.html", template_type: Literal["mermaid", "dagre"] = "mermaid"
 ) -> None:
     import webbrowser
 
