@@ -20,7 +20,7 @@ sqlh search --root -p /Users/dunett/codes/duperl/daas-migration/showyu_llm_backu
 
 # search all
 sqlh search --all -p /Users/dunett/codes/duperl/daas-migration/showyu_llm_backup_20260319 \
-    --table dim.dim_shopinfo222 \
+    --table dim.dim_shopinfo \
     --output-format text
 
 # search upstream

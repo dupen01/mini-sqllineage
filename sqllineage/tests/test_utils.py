@@ -78,7 +78,7 @@ def test_search_command_json():
 
 
 def test_search_related_root_tables():
-    output = utils.search_related_root_tables(sql_stmt_str, "ods_hive.ods_ec_staff22")
+    output = utils.search_related_root_tables(sql_stmt_str, "ods_hive.ods_ec_staff")
     # print(utils.list_command_text(output[0]))
     if isinstance(output, Tuple):
         print(utils.list_command_text(output[0]))

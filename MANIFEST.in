@@ -1,0 +1,12 @@
+include README.md
+include LICENSE
+include CHANGELOG.md
+include pyproject.toml
+recursive-include sqllineage *.py
+recursive-exclude sqllineage __pycache__
+recursive-exclude sqllineage *.pyc
+recursive-exclude sqllineage/tests
+recursive-exclude sqllineage/static
+exclude .gitignore
+exclude .python-version
+exclude uv.lock

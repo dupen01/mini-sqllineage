@@ -25,7 +25,7 @@ from pathlib import Path
 from typing import List, Literal, Tuple, Union
 
 from .core.graph import DagGraph, NodeNotFoundException
-from .core.helper import SqlHelper
+from .core.helper import get_source_target_tables, split_sql, trim_comment
 
 SearchResult = Union[Tuple[List[str], DagGraph], NodeNotFoundException]
 
@@ -42,8 +42,6 @@ def read_sql_from_directory(path: str | Path) -> str:
     """
     path = Path(path)
 
-    helper = SqlHelper()
-
     # 如果是单个SQL文件，直接读取
     if path.is_file():
         sql_str = path.read_text(encoding="utf-8")
@@ -57,7 +55,7 @@ def read_sql_from_directory(path: str | Path) -> str:
     for sql_file in sql_files:
         sql_str = sql_file.read_text(encoding="utf-8")
         # 去除注释
-        sql_str = helper.trim_comment(sql_str)
+        sql_str = trim_comment(sql_str)
         if not sql_str.strip().endswith(";"):
             sql_str += ";\n"
         sql_stmt_str += sql_str
@@ -68,7 +66,7 @@ def read_sql_from_directory(path: str | Path) -> str:
     # for sql_file in sql_files:
     #     sql_str = sql_file.read_text(encoding="utf-8")
     #      # 去除注释
-    #     sql_str = helper.trim_comment(sql_str)
+    #     sql_str = trim_comment(sql_str)
     #     if not sql_str.strip().endswith(";"):
     #         sql_str += ";\n"
     #     buf.write(sql_str)
@@ -88,14 +86,13 @@ def __build_tables_and_graph(sql_stmt_str: str) -> Tuple[list, list, DagGraph]:
     Returns:
         (源表集合, 目标表集合, DAG图对象)
     """
-    sql_stmt_lst = SqlHelper.split(sql_stmt_str)
-    helper = SqlHelper()
+    sql_stmt_lst = split_sql(sql_stmt_str)
     source_tables = set()
     target_tables = set()
     dg = DagGraph()
 
     for sql_stmt in sql_stmt_lst:
-        table_info = helper.get_source_target_tables(sql_stmt)
+        table_info = get_source_target_tables(sql_stmt)
         if table_info:
             sources = [re.sub(r"`|\"", "", t) for t in table_info["source_tables"]]
             targets = [re.sub(r"`|\"", "", t) for t in table_info["target_tables"]]
