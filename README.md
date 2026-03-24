@@ -1,9 +1,9 @@
 # mini-sqllineage
 
-[![PyPI version](https://img.shields.io/pypi/v/mini-sqllineage.svg)](https://pypi.org/project/mini-sqllineage/)
-[![Python version](https://img.shields.io/pypi/pyversions/mini-sqllineage.svg)](https://pypi.org/project/mini-sqllineage/)
-[![License](https://img.shields.io/pypi/l/mini-sqllineage.svg)](https://github.com/yourusername/mini-sqllineage/blob/main/LICENSE)
-[![Tests](https://img.shields.io/badge/tests-passing-brightgreen.svg)](https://github.com/yourusername/mini-sqllineage/actions)
+[![PyPI version](https://img.shields.io/pypi/v/sqlh.svg)](https://pypi.org/project/sqlh/)
+[![Python version](https://img.shields.io/pypi/pyversions/sqlh.svg)](https://pypi.org/project/sqlh/)
+[![License](https://img.shields.io/pypi/l/sqlh.svg)](https://github.com/dupen01/mini-sqllineage/blob/main/LICENSE)
+[![Tests](https://img.shields.io/badge/tests-passing-brightgreen.svg)](https://github.com/dupen01/mini-sqllineage/actions)
 
 A lightweight Python library for analyzing SQL lineage and tracking table dependencies in data pipelines.
 
