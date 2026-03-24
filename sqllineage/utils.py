@@ -20,13 +20,14 @@ Example:
 """
 
 import json
-import os
 import re
 from pathlib import Path
-from typing import List, Tuple
+from typing import List, Literal, Tuple, Union
 
-from .core.graph import DagGraph
+from .core.graph import DagGraph, NodeNotFoundException
 from .core.helper import SqlHelper
+
+SearchResult = Union[Tuple[List[str], DagGraph], NodeNotFoundException]
 
 
 def read_sql_from_directory(path: str | Path) -> str:
@@ -54,7 +55,6 @@ def read_sql_from_directory(path: str | Path) -> str:
     # 方式1: 使用字符串拼接
     sql_stmt_str = ""
     for sql_file in sql_files:
-        print(f"reading {sql_file.name}")
         sql_str = sql_file.read_text(encoding="utf-8")
         # 去除注释
         sql_str = helper.trim_comment(sql_str)
@@ -108,6 +108,10 @@ def __build_tables_and_graph(sql_stmt_str: str) -> Tuple[list, list, DagGraph]:
     return list(source_tables), list(target_tables), dg
 
 
+def get_all_dag(sql_stmt_str: str) -> DagGraph:
+    return __build_tables_and_graph(sql_stmt_str)[2]
+
+
 def get_all_tables(sql_stmt_str: str) -> List[str]:
     """
     获取所有表名
@@ -119,19 +123,24 @@ def get_all_tables(sql_stmt_str: str) -> List[str]:
         所有表名列表
     """
     source_tables, target_tables, _ = __build_tables_and_graph(sql_stmt_str)
-    # return sorted(list(source_tables.union(target_tables)))
     return sorted(list(set(source_tables + target_tables)))
 
 
 def get_all_root_tables(sql_stmt_str: str) -> List[str]:
     """
-    获取没有上游写入的底表，比如ods表，没有写入任务的表
+    获取所有根表(没有上游写入的表)
+
+    在依赖关系图中,根表是指只被读取但不被写入的表(如ODS层表)
+
+    Example:
+        如果有: A -> B, A -> C, B -> D
+        则根表为: A (只作为源,不作为目标)
 
     Args:
         sql_stmt_str: SQL语句字符串
 
     Returns:
-        根表列表
+        根表列表(按字母排序)
     """
     source_tables, target_tables, _ = __build_tables_and_graph(sql_stmt_str)
     return sorted(list(set(source_tables) - set(target_tables)))
@@ -139,113 +148,218 @@ def get_all_root_tables(sql_stmt_str: str) -> List[str]:
 
 def get_all_leaf_tables(sql_stmt_str: str) -> List[str]:
     """
-    获取没有下游任务的目标表，比如ads表，最下游的表
+    获取所有叶子表(没有下游读取的表)
+
+    在依赖关系图中,叶子表是指只被写入但不被读取的表(如ADS层表)
+
+    Example:
+        如果有: A -> B, B -> C, D -> C
+        则叶子表为: C (只作为目标,不作为源)
 
     Args:
         sql_stmt_str: SQL语句字符串
 
     Returns:
-        叶子表列表
+        叶子表列表(按字母排序)
     """
     source_tables, target_tables, _ = __build_tables_and_graph(sql_stmt_str)
     return sorted(list(set(target_tables) - set(source_tables)))
 
 
-def search_related_root_tables(sql_stmt_str: str, target_table: str) -> List[str] | None:
+def search_related_root_tables(sql_stmt_str: str, target_table: str) -> SearchResult:
     """
-    从目标表向上追溯，获取最源头的表（第一层上游根表）
+    从目标表向上追溯,获取该依赖路径上的所有根表
+
+    在子图中,根表是指只作为源但不作为目标的表
+
+    Example:
+        如果有: A -> B -> C, D -> E, B -> E
+        对表 E 执行:
+        - 返回: [A, D] (A和B的根是A, E的上游根是A和D)
 
     Args:
         sql_stmt_str: SQL语句字符串
         target_table: 目标表名
 
     Returns:
-        最源头表列表
+        (根表列表, 上游依赖子图)
     """
     _, _, dg = __build_tables_and_graph(sql_stmt_str)
     related_graph = dg.find_upstream(target_table)
-    if not related_graph:
-        return None
+    if isinstance(related_graph, DagGraph):
+        if related_graph.empty:
+            return [], DagGraph()
 
-    source_tables = set(edge[0] for edge in related_graph.get_edges())
-    target_tables = set(edge[1] for edge in related_graph.get_edges())
-    return sorted(list(source_tables - target_tables))
+        source_tables = set(edge[0] for edge in related_graph.get_edges())
+        target_tables = set(edge[1] for edge in related_graph.get_edges())
+        return sorted(list(source_tables - target_tables)), related_graph
+    else:
+        return related_graph
 
 
-def search_related_upstream_tables(sql_stmt_str: str, target_table: str) -> List[str] | None:
+def search_related_upstream_tables(sql_stmt_str: str, target_table: str) -> SearchResult:
     """
-    从目标表向上追溯，获取所有上游相关表（包含中间表）
+    从目标表向上追溯,获取所有上游依赖表(包含所有中间表)
+
+    Example:
+        如果有: A -> B -> C, D -> B
+        对表 C 执行:
+        - 返回: [A, B, D] (C的所有上游: B, A, D)
 
     Args:
         sql_stmt_str: SQL语句字符串
         target_table: 目标表名
 
     Returns:
-        上游相关表列表
+        (上游表列表, 上游依赖子图)
     """
     _, _, dg = __build_tables_and_graph(sql_stmt_str)
     related_graph = dg.find_upstream(target_table)
-    if not related_graph:
-        return None
+    if isinstance(related_graph, DagGraph):
+        if related_graph.empty:
+            return [], DagGraph()
 
-    related_tables = set()
-    for edge in related_graph.get_edges():
-        related_tables.update(edge)
+        related_tables = set()
+        for node in related_graph.get_nodes():
+            related_tables.add(node)
 
-    return sorted(list(related_tables))
+        related_tables.remove(target_table)
+        return sorted(list(related_tables)), related_graph
+    else:
+        return related_graph
 
 
-def search_related_tables(sql_stmt_str: str, target_table: str) -> List[str] | None:
+def search_related_downstream_tables(sql_stmt_str: str, target_table: str) -> SearchResult:
+    """
+    从目标表向下追溯,获取所有下游依赖表(包含所有中间表)
+
+    Example:
+        如果有: A -> B -> C, B -> D
+        对表 A 执行:
+        - 返回: [B, C, D] (A的所有下游: B, C, D)
+
+    Args:
+        sql_stmt_str: SQL语句字符串
+        target_table: 目标表名
+
+    Returns:
+        (下游表列表, 下游依赖子图)
+    """
+    _, _, dg = __build_tables_and_graph(sql_stmt_str)
+    related_graph = dg.find_downstream(target_table)
+    if isinstance(related_graph, DagGraph):
+        if related_graph.empty:
+            return [], DagGraph()
+
+        related_tables = set()
+        for node in related_graph.get_nodes():
+            related_tables.add(node)
+        # 移除目标表,避免重复
+        related_tables.remove(target_table)
+        return sorted(list(related_tables)), related_graph
+    else:
+        return related_graph
+
+
+def search_related_tables(sql_stmt_str: str, target_table: str) -> SearchResult:
+    """
+    从目标表双向追溯,获取所有相关表(上游+下游,不包含自身)
+
+    Example:
+        如果有: A -> B -> C, D -> B, C -> E
+        对表 B 执行:
+        - 返回: [A, C, D, E] (上游: A, D; 下游: C, E)
+
+    Args:
+        sql_stmt_str: SQL语句字符串
+        target_table: 目标表名
+
+    Returns:
+        (相关表列表, 完整依赖子图)
+    """
     _, _, dg = __build_tables_and_graph(sql_stmt_str)
     related_graph_upstream = dg.find_upstream(target_table)
-    related_graph_downstream = dg.find_downstream(target_table)
-    if not related_graph_upstream or not related_graph_downstream:
-        return None
-    related_tables = set()
-    for edge in related_graph_upstream.get_edges():
-        related_tables.update(edge)
-    for edge in related_graph_downstream.get_edges():
-        related_tables.update(edge)
-    return sorted(list(related_tables))
+    if isinstance(related_graph_upstream, DagGraph):
+        related_graph_downstream = dg.find_downstream(target_table)
+        if isinstance(related_graph_downstream, DagGraph):
+            new_graph = related_graph_downstream.union(related_graph_upstream)
+
+            if new_graph.empty:
+                return [], DagGraph()
+            else:
+                related_tables = set()
+                for node in new_graph.get_nodes():
+                    related_tables.add(node)
+                # 移除目标表,避免重复
+                related_tables.remove(target_table)
+                return sorted(list(related_tables)), new_graph
+        else:
+            return related_graph_downstream
+    else:
+        return related_graph_upstream
 
 
-def __visualize_dag(dag_graph: DagGraph, filename: str = "dag_mermaid.html") -> None:
-    """
-    可视化DAG图
-
-    Args:
-        sql_stmt_str: SQL语句字符串
-    """
+def visualize_dag(
+    dag_graph: DagGraph, filename: str | Path = "lineage_viewer.html", template_type: Literal["mermaid", "dagre"] = "mermaid"
+) -> None:
     import webbrowser
 
-    html_content = dag_graph.to_html()
+    html_content = dag_graph.to_html(template_type=template_type)
 
     with open(filename, "w", encoding="utf-8") as f:
         f.write(html_content)
 
-    abs_path = os.path.abspath(filename)
+    abs_path = Path(filename).absolute()
     webbrowser.open(f"file://{abs_path}")
     print(f"HTML文件已生成并打开: {abs_path}")
 
 
-def list_command_json(tables: list[str]) -> str:
-    result = {"status": "ok", "command": "list-tables", "tables": tables, "meta": {"table_count": len(tables)}}
+def list_command_json(tables: list[str], sub_command_arg: str | None = None) -> str:
+    result = {
+        "status": "ok",
+        "command": "list-tables",
+        "sub_command_arg": sub_command_arg,
+        "tables": tables,
+        "meta": {"table_count": len(tables)},
+    }
 
-    return json.dumps(result)
+    return json.dumps(result, indent=2, ensure_ascii=False)
 
 
 def list_command_text(tables: list[str]) -> str:
+    if not tables:
+        return "未找到相关表, 目标表已经是叶子表或根表"
     result = "- " + "\n- ".join(sorted(tables))
     return result
 
 
-def search_command_json(dag_graph: DagGraph) -> str:
-    dag_dict = dag_graph.to_dict()
+def search_command_json(search_result: SearchResult, sub_command_arg: str | None = None) -> str:
     result = {
         "status": "ok",
         "command": "search-table",
-        "data": {"nodes": dag_dict.get("nodes"), "edges": dag_dict.get("edges")},
-        "mermaid": dag_graph.to_mermaid(),
-        "meta": {"node_count": dag_dict.get("node_count")},
+        "sub_command_arg": sub_command_arg,
+        "data": [],
+        "meta": {"node_count": 0},
     }
-    return json.dumps(result)
+    if isinstance(search_result, Tuple):
+        dag_graph = search_result[1]
+        dag_dict = dag_graph.to_dict()
+        result["data"] = {"nodes": dag_dict.get("nodes"), "edges": dag_dict.get("edges")}
+        result["mermaid"] = dag_graph.to_mermaid()
+        result["meta"]["node_count"] = dag_dict.get("node_count")
+    else:
+        result["status"] = str(search_result)
+
+    return json.dumps(result, indent=2, ensure_ascii=False)
+
+
+def search_command_text(search_result: SearchResult) -> str:
+
+    if isinstance(search_result, Tuple):
+        related_tables = search_result[0]
+        if not related_tables:
+            return "=> 未找到相关表, 目标表已经是叶子表或根表"
+        else:
+            return "- " + "\n- ".join(sorted(related_tables))
+    else:
+        return str(search_result)

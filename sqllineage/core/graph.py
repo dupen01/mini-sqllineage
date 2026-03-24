@@ -17,8 +17,10 @@ Example:
     dg.print_all_edges_to_mermaid()
 """
 
+from collections import deque
 from pathlib import Path
 from string import Template
+from typing import Literal, Union
 
 
 class NodeNotFoundException(Exception):
@@ -39,6 +41,9 @@ class CycleDetectedException(Exception):
     pass
 
 
+FindResult = Union["DagGraph", NodeNotFoundException]
+
+
 class DagGraph:
     def __init__(self, nodes: list[str] | None = None, edges: list[tuple[str, str]] | None = None) -> None:
         """
@@ -55,7 +60,10 @@ class DagGraph:
             self.__edges = set()  # 使用集合存储边
         else:
             self.__edges = set(edges)  # 使用集合存储边
-            self.__nodes.update({node for edge in edges for node in edge})  # 从边中提取节点并添加到节点集合
+            # self.__nodes.update({node for edge in edges for node in edge})  # 从边中提取节点并添加到节点集合
+            for edge in edges:
+                self.__nodes.add(edge[0])
+                self.__nodes.add(edge[1])
 
         self.__adjacency_list: dict[str, set[str]] = {}  # 邻接表，用于快速遍历（下游）
         self.__reverse_adjacency_list: dict[str, set[str]] = {}  # 反向邻接表，用于上游查找
@@ -180,6 +188,24 @@ class DagGraph:
         """
         return sorted(list(self.__edges))
 
+    def union(self, other: "DagGraph") -> "DagGraph":
+        """
+        合并两个DAG图
+
+        Args:
+            other: 另一个DAG图
+
+        Returns:
+            合并后的DAG图
+        """
+        new_nodes = self.get_nodes() + other.get_nodes()
+        new_edges = self.get_edges() + other.get_edges()
+        return DagGraph(new_nodes, new_edges)
+
+    @property
+    def empty(self) -> bool:
+        return len(self.__nodes) == 0
+
     def __would_create_cycle(self, from_node: str, to_node: str) -> bool:
         """
         检查添加边是否会形成环
@@ -241,7 +267,36 @@ class DagGraph:
 
         return False
 
-    def find_downstream(self, node: str) -> "DagGraph":
+    def find_upstream(self, node: str) -> FindResult:
+        """
+        查找所有上游依赖的边
+
+        Args:
+            node: 目标节点
+
+        Returns:
+            上游边的集合
+        """
+        if node not in self.__nodes:
+            return NodeNotFoundException(f"节点不存在:{node}")
+
+        queue = deque([node])
+        visited = set([node])
+        all_relations = []
+
+        while queue:
+            current = queue.popleft()
+            # 使用反向邻接表直接查找上游节点，提升性能
+            predecessors = self.__reverse_adjacency_list.get(current, set())
+            for predecessor in predecessors:
+                edge = (predecessor, current)
+                all_relations.append(edge)
+                if predecessor not in visited:
+                    visited.add(predecessor)
+                    queue.append(predecessor)
+        return DagGraph(edges=all_relations)
+
+    def find_downstream(self, node: str) -> FindResult:
         """
         查找所有下游依赖的边
 
@@ -252,9 +307,7 @@ class DagGraph:
             下游边的集合
         """
         if node not in self.__nodes:
-            return DagGraph()
-
-        from collections import deque
+            return NodeNotFoundException(f"节点不存在:{node}")
 
         queue = deque([node])
         visited = set([node])
@@ -271,37 +324,6 @@ class DagGraph:
                     visited.add(neighbor)
                     queue.append(neighbor)
 
-        return DagGraph(edges=all_relations)
-
-    def find_upstream(self, node: str) -> "DagGraph":
-        """
-        查找所有上游依赖的边
-
-        Args:
-            node: 目标节点
-
-        Returns:
-            上游边的集合
-        """
-        if node not in self.__nodes:
-            return DagGraph()
-
-        from collections import deque
-
-        queue = deque([node])
-        visited = set([node])
-        all_relations = []
-
-        while queue:
-            current = queue.popleft()
-            # 使用反向邻接表直接查找上游节点，提升性能
-            predecessors = self.__reverse_adjacency_list.get(current, set())
-            for predecessor in predecessors:
-                edge = (predecessor, current)
-                all_relations.append(edge)
-                if predecessor not in visited:
-                    visited.add(predecessor)
-                    queue.append(predecessor)
         return DagGraph(edges=all_relations)
 
     def to_mermaid(self, direction="LR") -> str:
@@ -330,10 +352,7 @@ class DagGraph:
         edges = [{"source": _from, "target": _to} for _from, _to in self.__edges]
         return {"nodes": nodes, "edges": edges, "node_count": len(nodes)}
 
-    # def to_json(self) -> str:
-    #     return json.dumps(self.to_dict())
-
-    def to_html(self) -> str:
+    def to_html(self, template_type: Literal["mermaid", "dagre"] = "mermaid") -> str:
         """
         生成包含Mermaid.js可视化的HTML代码
 
@@ -343,16 +362,24 @@ class DagGraph:
         Returns:
             包含Mermaid.js可视化的HTML字符串
         """
-        # target_edges = edges or self.__edges
         mermaid_content = self.to_mermaid()
-
+        lineage_data = self.to_dict()
         # 读取HTML模板文件
-        template_path = Path(__file__).parent.parent / "static" / "mermaid_template.html"
+        if template_type == "mermaid":
+            template_path = Path(__file__).parent.parent / "static" / "mermaid_template.html"
+        elif template_type == "dagre":
+            template_path = Path(__file__).parent.parent / "static" / "dagre_template.html"
+        else:
+            raise ValueError(f"Unknown template type: {template_type}")
 
         with open(template_path, encoding="utf-8") as f:
             template = Template(f.read())
 
         # 替换模板变量
-        html_content = template.safe_substitute(title="DAG Visualization", mermaid_content=mermaid_content)
+        html_content = template.safe_substitute(
+            title="DAG Visualization",
+            mermaid_content=mermaid_content,
+            lineage_data=lineage_data
+        )
 
         return html_content

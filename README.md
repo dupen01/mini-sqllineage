@@ -1,5 +1,6 @@
 
-
+# TODO
+- [] 搜索指定表时考虑模糊匹配，当表名不存在时，返回提示或者给出可能的表名（相似度）
 
 
 
@@ -49,25 +50,26 @@
 ### CLI 参数
 ```bash
 # 获取所有表名
-sqlh list-tables --all --path </path/to/sql-files> --output-format <json|text>
+sqlh list --all --path </path/to/sql-files> --output-format <json|text>
 
 # 获取所有 root 表名
-sqlh list-tables --root --path </path/to/sql-files> --output-format <json|text>
+sqlh list --root --path </path/to/sql-files> --output-format <json|text>
 
 # 获取所有 leaf 表名
-sqlh list-tables --leaf --path </path/to/sql-files> --output-format <json|text>
+sqlh list --leaf --path </path/to/sql-files> --output-format <json|text>
 
 # 搜索指定表的root 表名
-sqlh search-table --root --path </path/to/sql-files> --table <table-name> --output-format <json>
+sqlh search --root --path </path/to/sql-files> --table <table-name> --output-format <json|text>
 
 # 搜索指定表的所有上游表名
-sqlh search-table --upstream --path </path/to/sql-files> --table <table-name> --output-format <json|web>
+sqlh search --upstream --path </path/to/sql-files> --table <table-name> --output-format <json|web|text>
 
 # 搜索指定表的所有下游表名
-sqlh search-table --downstream --path </path/to/sql-files> --table <table-name> --output-format <json|web>
+sqlh search --downstream --path </path/to/sql-files> --table <table-name> --output-format <json|web|text>
+
 
 # 搜索指定表的所有相关表
-sqlh search-table --all --path </path/to/sql-files> --table <table-name> --output-format <json|web>
+sqlh search --all --path </path/to/sql-files> --table <table-name> --output-format <json|web|text>
 
 # 打开全部血缘关系图 web
 sqlh web --path </path/to/sql-files>

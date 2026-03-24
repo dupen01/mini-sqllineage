@@ -1,5 +1,4 @@
-from sqllineage import utils
-
+from sqllineage import DagGraph, utils
 
 sql_stmt_str2 = """
 -- DWD layer
@@ -29,12 +28,28 @@ FROM "cc"."dws_hive.dws_customer_daily";
 """
 
 
-def test_graph():
-    dag = utils.__build_tables_and_graph(sql_stmt_str2)[2]
-    # print(dag.to_mermaid())
-    dg = dag.find_downstream("dwd_hive.dwd_order")
-    print(dg.to_mermaid())
-    # print(dg.to_json())
-    print(dg.get_nodes())
-    # print(dag.get_nodes())
+def test_graph_empty():
+    dag = DagGraph()
+    print(dag.empty)
 
+
+def test_find_upstream():
+    sql = """
+    INSERT INTO dwd_hive.dwd_order
+    SELECT
+        order_id,
+        customer_id,
+        amount
+    FROM ods_hive.dwd_order;
+    """
+    dag = utils.__build_tables_and_graph(sql)[2]
+    # print(dag.to_mermaid())
+    # print(dag.get_nodes())
+    dg = dag.find_downstream("dwd_hive.dwd_order222")
+    if isinstance(dg, DagGraph):
+        print(dg.empty)
+        print(dg.to_mermaid())
+        # print(dg.to_json())
+        print(dg.get_nodes())
+    else:
+        print(dg)

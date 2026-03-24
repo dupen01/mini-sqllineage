@@ -1,17 +1,23 @@
 import argparse
+from pathlib import Path
 
-from sqllineage import (
-    __version__,
-    read_sql_from_directory,
-    get_all_tables,
-    get_all_root_tables,
+from sqllineage import __version__
+
+from .utils import (
+    get_all_dag,
     get_all_leaf_tables,
-    search_related_root_tables,
-    search_related_upstream_tables,
-    search_related_tables,
+    get_all_root_tables,
+    get_all_tables,
     list_command_json,
     list_command_text,
+    read_sql_from_directory,
     search_command_json,
+    search_command_text,
+    search_related_downstream_tables,
+    search_related_root_tables,
+    search_related_tables,
+    search_related_upstream_tables,
+    visualize_dag,
 )
 
 
@@ -28,7 +34,7 @@ def _create_parent_parser():
     parent_parser.add_argument(
         "-f",
         "--output-format",
-        choices=["json", "text"],
+        choices=["json", "text", "web", "html"],
         default="json",
         help="output format",
     )
@@ -37,7 +43,7 @@ def _create_parent_parser():
 
 
 def arg_parse():
-    parser = argparse.ArgumentParser(usage="sqlh [OPTIONS] <COMMAND>", description="mini-sqllineage")
+    parser = argparse.ArgumentParser(usage="%(prog)s [OPTIONS] <COMMAND>", description="mini-sqllineage")
     parser.add_argument("-v", "--version", action="version", version=__version__)
 
     # 获取共享参数的父解析器
@@ -81,7 +87,7 @@ def arg_parse():
         help="start web server for visualization",
         add_help=False,
     )
-    web_parser.add_argument("--html-path", help="html file path for visualization", default="./sqllineage.html")
+    web_parser.add_argument("--html-path", help="html file path for visualization", default=".")
     web_parser.add_argument("-h", "--help", action="help", default=argparse.SUPPRESS, help="show this help message")
 
     return parser.parse_args()
@@ -98,32 +104,45 @@ def main():
     if args.command == "list":
         if args.all:
             output = get_all_tables(sql_stmt_str)
+            sub_command_arg = "--all"
         elif args.root:
             output = get_all_root_tables(sql_stmt_str)
+            sub_command_arg = "--root"
         elif args.leaf:
             output = get_all_leaf_tables(sql_stmt_str)
+            sub_command_arg = "--leaf"
 
         if args.output_format == "json":
-            print(list_command_json(output))
+            print(list_command_json(output, sub_command_arg))
         else:
             print(list_command_text(output))
 
     elif args.command == "search":
-        # if args.root:
-        #     output = search_related_root_tables(sql_stmt_str, args.table)
-        # elif args.upstream:
-        #     output = search_related_upstream_tables(sql_stmt_str, args.table)
-        # elif args.downstream:
-        #     output = search_related_upstream_tables(sql_stmt_str, args.table)  # TODO: 需要实现下游搜索
-        # elif args.all:
-        #     output = search_related_tables(sql_stmt_str, args.table)
+        if args.root:
+            output = search_related_root_tables(sql_stmt_str, args.table)
+            sub_command_arg = "--root"
+        elif args.upstream:
+            output = search_related_upstream_tables(sql_stmt_str, args.table)
+            sub_command_arg = "--upstream"
+        elif args.downstream:
+            output = search_related_downstream_tables(sql_stmt_str, args.table)
+            sub_command_arg = "--downstream"
+        elif args.all:
+            output = search_related_tables(sql_stmt_str, args.table)
+            sub_command_arg = "--all"
 
-        # if args.output_format == "json":
-        #     print(search_command_json(output))
-        # else:
-        #     for table in output:
-        #         print(table)
-        ...
+        if args.output_format == "json":
+            print(search_command_json(output, sub_command_arg))
+        elif args.output_format in ["web", "html"]:
+            if isinstance(output, tuple):
+                visualize_dag(output[1], template_type="mermaid", filename="lineage_mermaid.html")
+            else:
+                print(output)
+        elif args.output_format == "text":
+            print(search_command_text(output))
 
     elif args.command == "web":
-        print("open web server...")
+        html_file_path = Path(args.html_path) / "lineage_dagre.html"
+        print(f"open web page: {html_file_path}")
+        visualize_dag(get_all_dag(sql_stmt_str), template_type="dagre", filename=html_file_path)
+        return
