@@ -1,4 +1,5 @@
 import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -18,8 +19,8 @@ from .utils import (
     search_related_root_tables,
     search_related_tables,
     search_related_upstream_tables,
+    table_count,
     visualize_dag,
-    table_count
 )
 
 
@@ -80,6 +81,7 @@ def arg_parse():
     search_direction.add_argument("--downstream", action="store_true", help="search downstream tables (dependents)")
     search_direction.add_argument("--all", action="store_true", help="search both upstream and downstream tables")
     search_parser.add_argument("-t", "--table", help="table name to search", required=True)
+    search_parser.add_argument("-d", "--depth", help="search depth", default=None, type=int)
     search_parser.add_argument("-h", "--help", action="help", default=argparse.SUPPRESS, help="show this help message")
 
     # web 子命令
@@ -137,10 +139,10 @@ def main():
             output = search_related_root_tables(sql_stmt_str, args.table)
             sub_command_arg = "--root"
         elif args.upstream:
-            output = search_related_upstream_tables(sql_stmt_str, args.table)
+            output = search_related_upstream_tables(sql_stmt_str, args.table, args.depth)
             sub_command_arg = "--upstream"
         elif args.downstream:
-            output = search_related_downstream_tables(sql_stmt_str, args.table)
+            output = search_related_downstream_tables(sql_stmt_str, args.table, args.depth)
             sub_command_arg = "--downstream"
         elif args.all:
             output = search_related_tables(sql_stmt_str, args.table)
@@ -161,7 +163,21 @@ def main():
         print(f"open web page: {html_file_path}")
         visualize_dag(get_all_dag(sql_stmt_str), template_type="dagre", filename=html_file_path)
         return
-    
+
     elif args.command == "table-count":
-        for table, count in table_count(sql_stmt_str, args.table):
-            print(f"{table}: {count}")
+        table_count_lst = table_count(sql_stmt_str, args.table)
+        if args.output_format == "text":
+            for table, count in table_count_lst:
+                print(f"{table}: {count}")
+
+        elif args.output_format == "json":
+            result = {
+                "status": "ok",
+                "command": "table-count",
+                "data": table_count_lst,
+                "meta": {"table_count": len(table_count_lst)},
+            }
+            print(json.dumps(result, indent=2, ensure_ascii=False))
+        else:
+            print(f"Error: Not Supported output format: {args.output_format}")
+            sys.exit(1)

@@ -267,12 +267,13 @@ class DagGraph:
 
         return False
 
-    def find_upstream(self, node: str) -> FindResult:
+    def find_upstream(self, node: str, depth: int | None = None) -> FindResult:
         """
         查找所有上游依赖的边
 
         Args:
             node: 目标节点
+            depth: 最大深度，None 表示全链
 
         Returns:
             上游边的集合
@@ -280,12 +281,17 @@ class DagGraph:
         if node not in self.__nodes:
             return NodeNotFoundException(f"节点不存在:{node}")
 
-        queue = deque([node])
+        queue = deque([(node, 0)])  # (node, current_depth)
         visited = set([node])
         all_relations = []
 
         while queue:
-            current = queue.popleft()
+            # current = queue.popleft()
+            current, current_depth = queue.popleft()
+            # 检查深度限制
+            if depth is not None and current_depth >= depth:
+                continue
+
             # 使用反向邻接表直接查找上游节点，提升性能
             predecessors = self.__reverse_adjacency_list.get(current, set())
             for predecessor in predecessors:
@@ -293,15 +299,16 @@ class DagGraph:
                 all_relations.append(edge)
                 if predecessor not in visited:
                     visited.add(predecessor)
-                    queue.append(predecessor)
+                    queue.append((predecessor, current_depth + 1))
         return DagGraph(edges=all_relations)
 
-    def find_downstream(self, node: str) -> FindResult:
+    def find_downstream(self, node: str, depth: int | None = None) -> FindResult:
         """
         查找所有下游依赖的边
 
         Args:
             node: 起始节点
+            depth: 最大深度，None 表示全链
 
         Returns:
             下游边的集合
@@ -309,12 +316,17 @@ class DagGraph:
         if node not in self.__nodes:
             return NodeNotFoundException(f"节点不存在:{node}")
 
-        queue = deque([node])
+        queue = deque([(node, 0)])  # (node, current_depth)
         visited = set([node])
         all_relations = []
 
         while queue:
-            current = queue.popleft()
+            current, current_depth = queue.popleft()
+
+            # 检查深度限制
+            if depth is not None and current_depth >= depth:
+                continue
+
             # 使用邻接表直接查找下游节点，提升性能
             neighbors = self.__adjacency_list.get(current, set())
             for neighbor in neighbors:
@@ -322,7 +334,7 @@ class DagGraph:
                 all_relations.append(edge)
                 if neighbor not in visited:
                     visited.add(neighbor)
-                    queue.append(neighbor)
+                    queue.append((neighbor, current_depth + 1))
 
         return DagGraph(edges=all_relations)
 
@@ -377,9 +389,7 @@ class DagGraph:
 
         # 替换模板变量
         html_content = template.safe_substitute(
-            title="DAG Visualization",
-            mermaid_content=mermaid_content,
-            lineage_data=lineage_data
+            title="DAG Visualization", mermaid_content=mermaid_content, lineage_data=lineage_data
         )
 
         return html_content

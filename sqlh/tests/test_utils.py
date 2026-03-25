@@ -26,7 +26,7 @@ def test_get_all_root_tables():
 
 
 def test_search_related_upstream_tables():
-    a = utils.search_related_upstream_tables(sql_stmt_str, "ods_hive.ods_order")
+    a = utils.search_related_upstream_tables(sql_stmt_str, "dws.xxx")
     if isinstance(a, Tuple):
         print(utils.list_command_text(a[0]))
     else:
@@ -88,5 +88,5 @@ def test_search_related_root_tables():
 
 def test_table_count():
     print(utils.table_count(sql_stmt_str))
-    for table, count in utils.table_count(sql_stmt_str, 'ods_hive.ods_order'):
+    for table, count in utils.table_count(sql_stmt_str, "ods_hive.ods_order"):
         print(f"{table}: {count}")

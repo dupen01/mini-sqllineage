@@ -198,7 +198,7 @@ def search_related_root_tables(sql_stmt_str: str, target_table: str) -> SearchRe
         return related_graph
 
 
-def search_related_upstream_tables(sql_stmt_str: str, target_table: str) -> SearchResult:
+def search_related_upstream_tables(sql_stmt_str: str, target_table: str, depth: int | None = None) -> SearchResult:
     """
     从目标表向上追溯,获取所有上游依赖表(包含所有中间表)
 
@@ -215,7 +215,7 @@ def search_related_upstream_tables(sql_stmt_str: str, target_table: str) -> Sear
         (上游表列表, 上游依赖子图)
     """
     _, _, dg = __build_tables_and_graph(sql_stmt_str)
-    related_graph = dg.find_upstream(target_table)
+    related_graph = dg.find_upstream(target_table, depth=depth)
     if isinstance(related_graph, DagGraph):
         if related_graph.empty:
             return [], DagGraph()
@@ -230,7 +230,7 @@ def search_related_upstream_tables(sql_stmt_str: str, target_table: str) -> Sear
         return related_graph
 
 
-def search_related_downstream_tables(sql_stmt_str: str, target_table: str) -> SearchResult:
+def search_related_downstream_tables(sql_stmt_str: str, target_table: str, depth: int | None = None) -> SearchResult:
     """
     从目标表向下追溯,获取所有下游依赖表(包含所有中间表)
 
@@ -247,7 +247,7 @@ def search_related_downstream_tables(sql_stmt_str: str, target_table: str) -> Se
         (下游表列表, 下游依赖子图)
     """
     _, _, dg = __build_tables_and_graph(sql_stmt_str)
-    related_graph = dg.find_downstream(target_table)
+    related_graph = dg.find_downstream(target_table, depth=depth)
     if isinstance(related_graph, DagGraph):
         if related_graph.empty:
             return [], DagGraph()
@@ -262,7 +262,7 @@ def search_related_downstream_tables(sql_stmt_str: str, target_table: str) -> Se
         return related_graph
 
 
-def search_related_tables(sql_stmt_str: str, target_table: str) -> SearchResult:
+def search_related_tables(sql_stmt_str: str, target_table: str, depth: int | None = None) -> SearchResult:
     """
     从目标表双向追溯,获取所有相关表(上游+下游,不包含自身)
 
@@ -279,9 +279,9 @@ def search_related_tables(sql_stmt_str: str, target_table: str) -> SearchResult:
         (相关表列表, 完整依赖子图)
     """
     _, _, dg = __build_tables_and_graph(sql_stmt_str)
-    related_graph_upstream = dg.find_upstream(target_table)
+    related_graph_upstream = dg.find_upstream(target_table, depth=depth)
     if isinstance(related_graph_upstream, DagGraph):
-        related_graph_downstream = dg.find_downstream(target_table)
+        related_graph_downstream = dg.find_downstream(target_table, depth=depth)
         if isinstance(related_graph_downstream, DagGraph):
             new_graph = related_graph_downstream.union(related_graph_upstream)
 
