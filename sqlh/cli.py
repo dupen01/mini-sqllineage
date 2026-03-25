@@ -19,6 +19,7 @@ from .utils import (
     search_related_tables,
     search_related_upstream_tables,
     visualize_dag,
+    table_count
 )
 
 
@@ -91,6 +92,15 @@ def arg_parse():
     web_parser.add_argument("--html-path", help="html file path for visualization", default=".")
     web_parser.add_argument("-h", "--help", action="help", default=argparse.SUPPRESS, help="show this help message")
 
+    # table-count 子命令
+    table_count_parser = subparsers.add_parser(
+        "table-count",
+        parents=[parent_parser],
+        help="count the number of tables",
+        add_help=False,
+    )
+    table_count_parser.add_argument("-t", "--table", help="table name to search")
+    table_count_parser.add_argument("-h", "--help", action="help", default=argparse.SUPPRESS, help="show this help message")
     return parser.parse_args()
 
 
@@ -151,3 +161,7 @@ def main():
         print(f"open web page: {html_file_path}")
         visualize_dag(get_all_dag(sql_stmt_str), template_type="dagre", filename=html_file_path)
         return
+    
+    elif args.command == "table-count":
+        for table, count in table_count(sql_stmt_str, args.table):
+            print(f"{table}: {count}")

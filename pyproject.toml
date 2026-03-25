@@ -1,6 +1,6 @@
 [project]
 name = "sqlh"
-version = "0.2.6"
+version = "0.2.7"
 maintainers = [
   {name = "Perry DU", email = "duneite@gmail.com"}
 ]

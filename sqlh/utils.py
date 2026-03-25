@@ -21,6 +21,7 @@ Example:
 
 import json
 import re
+from collections import Counter
 from pathlib import Path
 from typing import List, Literal, Tuple, Union
 
@@ -363,3 +364,15 @@ def search_command_text(search_result: SearchResult) -> str:
             return "- " + "\n- ".join(sorted(related_tables))
     else:
         return str(search_result)
+
+
+def table_count(sql_stmt_str: str, table_name: str | None = None):
+    tables = get_all_tables(sql_stmt_str)
+    counter = Counter()
+    if table_name:
+        counter[table_name] = sql_stmt_str.count(table_name.lower())
+        return [(table_name, counter[table_name])]
+    else:
+        for table in tables:
+            counter[table] += sql_stmt_str.count(table.lower())
+        return [(table, counter[table]) for table in sorted(counter, key=lambda x: counter[x], reverse=True)]

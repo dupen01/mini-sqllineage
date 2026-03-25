@@ -26,7 +26,7 @@ def test_get_all_root_tables():
 
 
 def test_search_related_upstream_tables():
-    a = utils.search_related_upstream_tables(sql_stmt_str, "dws.dws_cy_cust_ltst_active_rec")
+    a = utils.search_related_upstream_tables(sql_stmt_str, "ods_hive.ods_order")
     if isinstance(a, Tuple):
         print(utils.list_command_text(a[0]))
     else:
@@ -34,7 +34,7 @@ def test_search_related_upstream_tables():
 
 
 def test_search_related_downstream_tables():
-    a = utils.search_related_downstream_tables(sql_stmt_str, "ods.ods_plr_dwm_hr_xy_shop_performance_all")
+    a = utils.search_related_downstream_tables(sql_stmt_str, "ods_hive.ods_order")
     if isinstance(a, Tuple):
         print(utils.list_command_text(a[0]))
     else:
@@ -42,7 +42,7 @@ def test_search_related_downstream_tables():
 
 
 def test_search_related_tables():
-    a = utils.search_related_tables(sql_stmt_str, "dim.dim_shopinfo")
+    a = utils.search_related_tables(sql_stmt_str, "ods_hive.ods_order")
     if isinstance(a, Tuple):
         print(utils.list_command_text(a[0]))
     else:
@@ -78,9 +78,15 @@ def test_search_command_json():
 
 
 def test_search_related_root_tables():
-    output = utils.search_related_root_tables(sql_stmt_str, "ods_hive.ods_ec_staff")
+    output = utils.search_related_root_tables(sql_stmt_str, "ods_hive.ods_order")
     # print(utils.list_command_text(output[0]))
     if isinstance(output, Tuple):
         print(utils.list_command_text(output[0]))
     else:
         print(output)
+
+
+def test_table_count():
+    print(utils.table_count(sql_stmt_str))
+    for table, count in utils.table_count(sql_stmt_str, 'ods_hive.ods_order'):
+        print(f"{table}: {count}")

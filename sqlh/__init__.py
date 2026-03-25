@@ -11,9 +11,10 @@ from .utils import (
     search_related_tables,
     search_related_upstream_tables,
     visualize_dag,
+    table_count
 )
 
-__version__ = "0.2.6"
+__version__ = "0.2.7"
 
 __all__ = [
     "split_sql",
@@ -29,4 +30,5 @@ __all__ = [
     "search_related_tables",
     "search_command_json",
     "visualize_dag",
+    "table_count"
 ]
