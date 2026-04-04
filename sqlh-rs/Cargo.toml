@@ -1,0 +1,16 @@
+[package]
+name = "sqlh-rs"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "sql_splitter"
+path = "src/main.rs"
+
+[lib]
+name = "sql_splitter"
+path = "src/lib.rs"
+
+
+[dependencies]
+walkdir = "2"

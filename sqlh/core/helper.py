@@ -11,11 +11,14 @@ The parser uses keyword-based tokenization rather than full AST parsing,
 making it lightweight and fast for simple table/field extraction tasks.
 """
 
+import re
+
 from .keywords import KeyWords
 
 
 class ParseException(Exception):
     """Exception raised when SQL parsing fails."""
+
     pass
 
 
@@ -118,6 +121,209 @@ def split_sql(sql: str) -> list[str]:
     assert depth == 0, f"The number of nested levels of sql multi-line comments is not equal to 0: {depth}"
     if "" in result:
         result.remove("")
+    return result
+
+
+def split_sql_v2(sql: str) -> list[str]:
+    """
+    Split multi-statement SQL by semicolons, handling comments and quotes.
+    Optimized for performance and readability.
+    """
+    if not sql.strip():
+        return []
+
+    result = []
+    current_stmt = []
+
+    i = 0
+    n = len(sql)
+
+    while i < n:
+        char = sql[i]
+
+        # 1. 处理单行注释
+        if char == "-" and i + 1 < n and sql[i + 1] == "-":
+            # 跳过直到换行符
+            while i < n and sql[i] not in ("\n", "\r"):
+                i += 1
+            if i < n:  # 包含换行符
+                current_stmt.append(sql[i])
+                i += 1
+            continue
+
+        # 2. 处理块注释 /* ... */
+        if char == "/" and i + 1 < n and sql[i + 1] == "*":
+            current_stmt.append("/*")
+            i += 2
+            depth = 1
+            while i < n and depth > 0:
+                if sql[i] == "/" and i + 1 < n and sql[i + 1] == "*":
+                    depth += 1
+                    current_stmt.append("/*")
+                    i += 2
+                elif sql[i] == "*" and i + 1 < n and sql[i + 1] == "/":
+                    depth -= 1
+                    if depth == 0:
+                        current_stmt.append("*/")
+                        i += 2
+                        break
+                    current_stmt.append("*/")
+                    i += 2
+                else:
+                    current_stmt.append(sql[i])
+                    i += 1
+            continue
+
+        # 3. 处理引号
+        if char == "'" or char == '"':
+            quote_char = char
+            current_stmt.append(char)
+            i += 1
+            while i < n:
+                c = sql[i]
+                current_stmt.append(c)
+                i += 1
+                if c == quote_char:
+                    # 处理转义引号 '' 或 "" (取决于方言，这里简单处理为成对出现)
+                    if i < n and sql[i] == quote_char:
+                        current_stmt.append(sql[i])
+                        i += 1
+                    else:
+                        break
+            continue
+
+        # 4. 处理分号
+        if char == ";":
+            stmt_str = "".join(current_stmt)
+            if stmt_str.strip():
+                result.append(stmt_str)
+            current_stmt = []
+            i += 1
+            continue
+
+        # 5. 普通字符
+        current_stmt.append(char)
+        i += 1
+
+    # 处理最后剩余的语句
+    if current_stmt:
+        stmt_str = "".join(current_stmt)
+        if stmt_str.strip():
+            result.append(stmt_str)
+
+    return result
+
+
+def _try_parse_dollar_tag(text: str, pos: int) -> tuple[str, int] | None:
+    """
+    从 text[pos] 开始尝试匹配美元引号开标签 $tag$。
+    返回 (tag, end_pos) 或 None。
+    """
+    # 美元引号标签的合法字符：字母开头，字母/数字/下划线
+    _DOLLAR_TAG_RE = re.compile(r"\$([A-Za-z_][A-Za-z0-9_]*)?\$")
+
+    m = _DOLLAR_TAG_RE.match(text, pos)
+    if m:
+        tag = m.group(1) or ""
+        return tag, m.end()
+    return None
+
+
+def split_sql_v3(text: str) -> list[str]:
+    """
+    词法解析，完全对应 Rust lib.rs 中的 split_sql()。
+    状态：NORMAL / SINGLE_QUOTE / DOUBLE_QUOTE /
+          LINE_COMMENT / BLOCK_COMMENT / DOLLAR_QUOTE
+    """
+    NORMAL = 0
+    SINGLE_QUOTE = 1
+    DOUBLE_QUOTE = 2
+    LINE_COMMENT = 3
+    BLOCK_COMMENT = 4
+    DOLLAR_QUOTE = 5
+
+    state = NORMAL
+    block_depth = 0  # 嵌套块注释深度
+    dollar_tag = ""  # 当前美元引号的标签
+    dollar_close = ""  # 对应的闭标签字符串（缓存）
+
+    result = []
+    stmt_start = 0
+    i = 0
+    n = len(text)
+
+    while i < n:
+        c = text[i]
+        nxt = text[i + 1] if i + 1 < n else "\0"
+
+        if state == NORMAL:
+            if c == "'":
+                state = SINGLE_QUOTE
+            elif c == '"':
+                state = DOUBLE_QUOTE
+            elif c == "-" and nxt == "-":
+                state = LINE_COMMENT
+                i += 1
+            elif c == "/" and nxt == "*":
+                state = BLOCK_COMMENT
+                block_depth = 1
+                i += 1
+            elif c == "$":
+                parsed = _try_parse_dollar_tag(text, i)
+                if parsed is not None:
+                    dollar_tag, end = parsed
+                    dollar_close = f"${dollar_tag}$"
+                    state = DOLLAR_QUOTE
+                    i = end
+                    continue  # i 已跳过整个开标签，不再 +1
+            elif c == ";":
+                stmt = text[stmt_start:i].strip()
+                if stmt:
+                    result.append(stmt)
+                stmt_start = i + 1
+
+        elif state == SINGLE_QUOTE:
+            if c == "'" and nxt == "'":
+                i += 1
+            elif c == "\\" and nxt == "'":
+                i += 1
+            elif c == "'":
+                state = NORMAL
+
+        elif state == DOUBLE_QUOTE:
+            if c == '"' and nxt == '"':
+                i += 1
+            elif c == '"':
+                state = NORMAL
+
+        elif state == LINE_COMMENT:
+            if c == "\n":
+                state = NORMAL
+
+        elif state == BLOCK_COMMENT:
+            if c == "/" and nxt == "*":
+                block_depth += 1
+                i += 1
+            elif c == "*" and nxt == "/":
+                block_depth -= 1
+                if block_depth == 0:
+                    state = NORMAL
+                i += 1
+
+        elif state == DOLLAR_QUOTE:
+            if c == "$" and text[i : i + len(dollar_close)] == dollar_close:
+                i += len(dollar_close)
+                state = NORMAL
+                dollar_tag = ""
+                dollar_close = ""
+                continue
+
+        i += 1
+
+    tail = text[stmt_start:].strip()
+    if tail:
+        result.append(tail)
+
     return result
 
 
@@ -226,7 +432,7 @@ def get_source_target_tables(sql: str) -> dict[str, list[str]] | None:
         ParseException: If SQL contains multiple statements
 
     Note:
-        TODO: 
+        TODO: 不能识别join后面的 [hint] table_name, 需要优化
         {
             "source_tables": [(t1, 1), (t2, 2), (t3, 3)],
             "target_tables": [(t4, 1)]
@@ -343,6 +549,151 @@ def get_source_target_tables(sql: str) -> dict[str, list[str]] | None:
         return result
     else:
         return
+
+
+def get_source_target_tables_v2(sql: str) -> dict[str, list[str]] | None:
+    """
+    Extract source and target tables from a single SQL statement using a token-based approach.
+    """
+    # 1. 预处理
+    clean_sql = trim_comment(sql).strip()
+    if not clean_sql:
+        return None
+
+    # 去除末尾分号
+    if clean_sql.endswith(";"):
+        clean_sql = clean_sql[:-1]
+
+    # 校验多语句
+    # 注意：这里直接传原始 sql 给 split_sql 可能更稳妥，或者传 clean_sql 取决于 split_sql 的实现
+    if len(split_sql(clean_sql)) > 1:
+        raise ParseException("sql脚本为多条SQL语句,需传入单条SQL语句.")
+
+    # 2. 分词 (使用正则优化性能)
+    # 匹配单词、括号、逗号。忽略空白字符。
+    # tokens = re.findall(r"[A-Za-z_][A-Za-z0-9_]*|[()]|,", clean_sql)
+    tokens = re.findall(r"\[[^\]]+\]|[A-Za-z_][A-Za-z0-9_]*|[()]|,", clean_sql)
+
+    if not tokens:
+        return None
+
+    # 3. 状态机变量
+    source_tables = set()
+    target_tables = set()
+
+    # 状态标志
+    # 状态标志
+    is_insert_context = False
+    is_from_context = False
+    is_join_context = False  # 新增：专门标记 JOIN 后的状态
+    is_using_context = False
+    is_merge_context = False
+
+    # 辅助变量
+
+    for token in tokens:
+        token_upper = token.upper()
+
+        # --- 特殊处理：跳过 Hint 内容 ---
+        # 如果 token 是 [...] 格式，直接跳过，不要把它当成括号或关键字
+        if token.startswith("[") and token.endswith("]"):
+            # 如果是在 JOIN 后面遇到的 Hint，保持 join_context 为 True
+            # 如果是在 FROM 后面遇到的 Hint，保持 from_context 为 True
+            continue
+
+        # --- 上下文重置 ---
+        if token == "(":
+            # 左括号通常意味着子查询，重置 FROM/JOIN 上下文
+            # 但我们不能重置 INSERT 上下文
+            is_from_context = False
+            is_join_context = False
+            is_using_context = False
+            continue
+
+        # --- 关键字状态流转 ---
+
+        if token_upper in KeyWords.insert_keywords:
+            is_insert_context = True
+            is_from_context = False
+            is_join_context = False
+            continue
+
+        if token_upper == "FROM":
+            is_from_context = True
+            is_join_context = False
+            is_insert_context = False
+            continue
+
+        # 修复核心：处理 JOIN
+        if token_upper in ["JOIN", "INNER", "LEFT", "RIGHT", "OUTER", "CROSS"]:
+            is_from_context = True  # JOIN 也是一种来源
+            is_join_context = True  # 标记刚刚遇到了 JOIN，下一个非关键字即为表名
+            continue
+
+        # 【关键修复】：遇到 ON，说明表名部分结束了，后面是关联条件
+        if token_upper == "ON":
+            is_from_context = False
+            is_join_context = False
+            continue
+
+        if token_upper == "MERGE":
+            is_merge_context = True
+            continue
+
+        if token_upper == "USING":
+            is_from_context = False
+            is_join_context = False
+            if is_merge_context:
+                is_using_context = True
+            continue
+
+        # --- 表名捕获逻辑 ---
+
+        # 1. INSERT 目标表
+        if is_insert_context and token_upper not in KeyWords.keywords and token not in ("(", ")"):
+            target_tables.add(token)
+            is_insert_context = False
+            continue
+
+        # 2. MERGE 逻辑 (略，保持原有逻辑) ...
+        if is_merge_context and not is_using_context and token_upper not in KeyWords.keywords:
+            target_tables.add(token)
+            is_merge_context = False
+            continue
+
+        if is_using_context and token_upper not in KeyWords.keywords:
+            if token != "(":
+                source_tables.add(token)
+            is_using_context = False
+            is_merge_context = False
+            continue
+
+        # 3. FROM / JOIN 源表 (修复核心)
+        # 条件：处于 FROM 或 JOIN 状态，且不是关键字，且不是括号/逗号
+        if (is_from_context or is_join_context) and token_upper not in KeyWords.keywords and token not in ("(", ")", ","):
+            source_tables.add(token)
+
+            # 捕获到表名后，重置状态，等待下一个 JOIN 或逗号
+            is_join_context = False
+            # 注意：is_from_context 保持 True，以便处理 "FROM t1, t2" 这种逗号分隔的情况
+            continue
+
+        # 处理逗号：逗号意味着可能有下一个表名，重置别名状态，保持 FROM 上下文
+        if token == ",":
+            is_join_context = False
+            # is_from_context 保持不变
+            continue
+
+    # 4. 过滤 CTE 中间表
+    # 注意：_get_cte_mid_tables 需要解析 WITH 子句，这里假设它工作正常
+    cte_tables = _get_cte_mid_tables(clean_sql)
+    source_tables -= set(cte_tables)
+
+    # 5. 构建结果
+    if source_tables or target_tables:
+        return {"source_tables": list(source_tables), "target_tables": list(target_tables)}
+
+    return None
 
 
 # ============================================================================

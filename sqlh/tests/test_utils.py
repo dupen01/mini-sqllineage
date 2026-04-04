@@ -5,7 +5,7 @@ from sqlh import utils
 # 读取目录或文件
 sql_path = ""
 sql_stmt_str = utils.read_sql_from_directory(sql_path)
-
+sql_stmt_str = """insert into t3 SELECT /*+edede */ COUNT(*) FROM t2 JOIN [broadcast] t1 ON t1.c1 = t2.c2;"""
 
 def test_read_sql_from_directory():
     import timeit

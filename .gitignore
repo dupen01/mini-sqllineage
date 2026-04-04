@@ -72,3 +72,5 @@ uv.lock
 Thumbs.db
 
 uv.lock
+
+target/
