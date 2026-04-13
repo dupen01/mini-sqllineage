@@ -9,6 +9,18 @@ This module provides SQL parsing functionality using token-based analysis:
 
 The parser uses keyword-based tokenization rather than full AST parsing,
 making it lightweight and fast for simple table/field extraction tasks.
+
+=== 性能统计 ===
+文件数量  : 489 个
+总字符数  : 2264584 字节 (2.16 MB)
+SQL 语句数 : 1174 条
+读取耗时  : 15.196 ms
+解析耗时  : 129.142 ms
+总耗时    : 535.163 ms
+解析速度v1  : 16.7 MB/s
+解析速度v2  : 14.9 MB/s
+解析速度v3  : 8.8 MB/s
+
 """
 
 import re
@@ -432,7 +444,7 @@ def get_source_target_tables(sql: str) -> dict[str, list[str]] | None:
         ParseException: If SQL contains multiple statements
 
     Note:
-        TODO: 不能识别join后面的 [hint] table_name, 需要优化
+        TODO: 不能识别join后面的 [hint] table_name（已在 get_source_target_tables_v2 实现）
         {
             "source_tables": [(t1, 1), (t2, 2), (t3, 3)],
             "target_tables": [(t4, 1)]
@@ -554,6 +566,8 @@ def get_source_target_tables(sql: str) -> dict[str, list[str]] | None:
 def get_source_target_tables_v2(sql: str) -> dict[str, list[str]] | None:
     """
     Extract source and target tables from a single SQL statement using a token-based approach.
+    changelog: 
+        -  支持识别join后面的 [hint] table_name
     """
     # 1. 预处理
     clean_sql = trim_comment(sql).strip()

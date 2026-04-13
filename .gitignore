@@ -73,4 +73,4 @@ Thumbs.db
 
 uv.lock
 
-target/
+sqlh-rs/
