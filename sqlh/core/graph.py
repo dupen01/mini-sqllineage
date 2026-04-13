@@ -351,6 +351,8 @@ class DagGraph:
             mermaid_str = f"graph {direction}"
             for _from, _to in self.__edges:
                 mermaid_str += f"\n  {_from} --> {_to}"
+            # 去除花括号
+            mermaid_str = mermaid_str.replace("{", "").replace("}", "")
             return mermaid_str
 
     def to_dict(self) -> dict:

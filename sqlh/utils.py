@@ -26,7 +26,7 @@ from pathlib import Path
 from typing import List, Literal, Tuple, Union
 
 from .core.graph import DagGraph, NodeNotFoundException
-from .core.helper import get_source_target_tables_v2, split_sql, trim_comment
+from .core.helper import split_sql, trim_comment, get_source_target_tables
 
 SearchResult = Union[Tuple[List[str], DagGraph], NodeNotFoundException]
 
@@ -96,7 +96,7 @@ def __build_tables_and_graph(sql_stmt_str: str) -> Tuple[list, list, DagGraph]:
     dg = DagGraph()
 
     for sql_stmt in sql_stmt_lst:
-        table_info = get_source_target_tables_v2(sql_stmt)
+        table_info = get_source_target_tables(sql_stmt)
         if table_info:
             sources = [re.sub(r"`|\"", "", t) for t in table_info["source_tables"]]
             targets = [re.sub(r"`|\"", "", t) for t in table_info["target_tables"]]
