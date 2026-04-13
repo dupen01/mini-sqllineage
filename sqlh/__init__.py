@@ -1,5 +1,5 @@
 from .core.graph import DagGraph
-from .core.helper import split_sql, trim_comment
+from .core.helper import split_sql, trim_comment, split_sql_v2, split_sql_v3
 from .utils import (
     get_all_leaf_tables,
     get_all_root_tables,
@@ -14,10 +14,12 @@ from .utils import (
     table_count
 )
 
-__version__ = "0.3.0"
+__version__ = "0.3.1"
 
 __all__ = [
     "split_sql",
+    "split_sql_v2",
+    "split_sql_v3",
     "trim_comment",
     "DagGraph",
     "read_sql_from_directory",

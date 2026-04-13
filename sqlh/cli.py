@@ -5,6 +5,7 @@ from pathlib import Path
 
 from sqlh import __version__
 
+from .core.helper import split_sql, split_sql_v2, split_sql_v3
 from .utils import (
     get_all_dag,
     get_all_leaf_tables,
@@ -46,7 +47,7 @@ def _create_parent_parser():
 
 
 def arg_parse():
-    parser = argparse.ArgumentParser(usage="%(prog)s [OPTIONS] <COMMAND>", description="mini-sqllineage")
+    parser = argparse.ArgumentParser(usage="%(prog)s <COMMAND> [OPTIONS] ")
     parser.add_argument("-v", "--version", action="version", version=__version__)
 
     # 获取共享参数的父解析器
@@ -103,6 +104,24 @@ def arg_parse():
     )
     table_count_parser.add_argument("-t", "--table", help="table name to search")
     table_count_parser.add_argument("-h", "--help", action="help", default=argparse.SUPPRESS, help="show this help message")
+
+    # split 子命令
+    split_parser = subparsers.add_parser(
+        "split",
+        parents=[parent_parser],
+        help="split sql file",
+        add_help=False,
+    )
+    split_parser.add_argument(
+        "-sv",
+        "--split-version",
+        type=int,
+        choices=[1, 2, 3],
+        default=1,
+        help="split version",
+    )
+    split_parser.add_argument("-h", "--help", action="help", default=argparse.SUPPRESS, help="show this help message")
+
     return parser.parse_args()
 
 
@@ -181,3 +200,19 @@ def main():
         else:
             print(f"Error: Not Supported output format: {args.output_format}")
             sys.exit(1)
+
+    elif args.command == "split":
+        import time
+
+        t = time.perf_counter()
+        if args.split_version == 1:
+            split_sql(sql_stmt_str)
+        elif args.split_version == 2:
+            split_sql_v2(sql_stmt_str)
+        elif args.split_version == 3:
+            split_sql_v3(sql_stmt_str)
+        else:
+            print(f"Error: Not Supported split version: {args.split_version}")
+            sys.exit(1)
+        t_parse = time.perf_counter() - t
+        print(f"parse time: {t_parse * 1000:.3f} ms")
