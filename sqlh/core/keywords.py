@@ -47,6 +47,10 @@ class KeyWords:
         "DATABASE",
         "TEMPORARY",
         "MERGE",
+        "UNNEST",
+        "LATERAL",
+        "GENERATE_SERIES",
+        "SEQUENCE",
     ]
 
     insert_keywords = [

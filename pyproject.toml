@@ -1,6 +1,6 @@
 [project]
 name = "sqlh"
-version = "0.3.4"
+version = "0.3.5"
 
 description = "A lightweight SQL lineage analysis library for tracking table dependencies in data pipelines"
 readme = "README.md"
@@ -16,6 +16,7 @@ keywords = [
     "data-engineering"
 ]
 
+# 零外部依赖
 dependencies = []
 
 [project.scripts]

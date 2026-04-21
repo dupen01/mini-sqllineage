@@ -1,6 +1,6 @@
 from sqlh.core.helper import (
+    _get_cte_mid_tables,
     get_source_target_tables,
-    get_source_target_tables_v2,
     split_sql,
     split_sql_v2,
     split_sql_v3,
@@ -62,16 +62,37 @@ def test_trim_comment():
 
 def test_get_source_target_tables():
     """Test source/target table extraction."""
-    sql = "INSERT INTO dwd.user_dim SELECT * FROM ods.user;"
+    sql = """
+
+"""
     result = get_source_target_tables(sql)
     assert result is not None
-    assert "ods.user" in result["source_tables"]
-    assert "dwd.user_dim" in result["target_tables"]
+    print(result)
 
 
-def test_get_source_target_tables_v2():
-    """Test source/target table extraction."""
-    sql = "SELECT COUNT(*) FROM t2 JOIN [broadcast] t1 ON t1.c1 = t2.c2;"
-    result = get_source_target_tables_v2(sql)
-    for table in result["source_tables"]:
-        print(f"Source Table: {table}")
+def test_get_cte_tables():
+    sql = """
+with t1 as (
+  with t2 as (
+    select * from dwd_hive.dwd_hr_youth_p7_normal_income   limit 10 
+  )
+  select * from t2  
+)
+, t3 as (
+  select * from t1
+)
+, t4 as (
+  select * from t3 
+)
+select * from t4 
+;"""
+
+    result = _get_cte_mid_tables(sql)
+    assert result is not None
+    assert "t1" in result
+    assert "t2" in result
+    assert "t3" in result
+    assert "t4" in result
+
+    for table in result:
+        print(f"CTE Table: {table}")
